@@ -4,118 +4,139 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/supabase";
 
-export default function CreateRoom() {
-  const [pseudo, setPseudo] = useState("");
-  const [mode, setMode] = useState<number | null>(null);
+export default function CreatePage() {
+  const [roomName, setRoomName] = useState("");
+  const [totalQuestions, setTotalQuestions] = useState(10);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const modes = [
-    { value: 10, label: "⚡ RAPIDE", desc: "10 questions", color: "border-yellow-400 text-yellow-400" },
-    { value: 20, label: "🔥 MOYEN", desc: "20 questions", color: "border-orange-400 text-orange-400" },
-    { value: 40, label: "💀 COMPLÈTE", desc: "40 questions", color: "border-red-400 text-red-400" },
-  ];
-
-  const handleCreate = async () => {
-    if (!pseudo.trim()) {
-      alert("Entre un pseudo !");
-      return;
-    }
-    if (!mode) {
-      alert("Choisis un mode de jeu !");
-      return;
-    }
-
+  const createRoom = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoading(true);
 
-    const roomCode = Math.floor(1000 + Math.random() * 9000).toString();
-    const playerId = crypto.randomUUID();
+    const userId = localStorage.getItem("userId");
+    const userPseudo = localStorage.getItem("userPseudo") || "Joueur";
 
-    // Créer le salon avec le nombre de questions
-    const { error: roomError } = await supabase
-      .from("rooms")
-      .insert([{
-        id: roomCode,
-        host_name: pseudo,
-        host_id: playerId,
-        status: "waiting",
-        total_questions: mode
-      }]);
-
-    if (roomError) {
-      alert("Erreur salon : " + roomError.message);
+    if (!userId) {
+      alert("Tu dois être connecté pour créer un salon !");
+      router.push("/auth");
       setLoading(false);
       return;
     }
 
-    // Créer le joueur (le host)
-    await supabase
-      .from("players")
-      .insert([{ id: playerId, room_id: roomCode, name: pseudo, score: 0 }]);
+    // Générer un code de salon aléatoire de 6 caractères
+    const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
-    router.push(`/room/${roomCode}?playerId=${playerId}`);
+    try {
+      // 1. Créer le salon
+      const { data: room, error: roomError } = await supabase
+        .from("rooms")
+        .insert([
+          {
+            id: roomCode,
+            name: roomName || "Salon de " + userPseudo,
+            host_id: userId,
+            total_questions: totalQuestions,
+            status: "waiting",
+            question_phase: "intro",
+            game_round: 0,
+          },
+        ])
+        .select()
+        .single();
+
+      if (roomError) throw roomError;
+
+      // 2. Ajouter le créateur comme premier joueur (Host)
+      const { error: playerError } = await supabase
+        .from("players")
+        .insert([
+          {
+            room_id: roomCode,
+            player_id: userId,
+            name: userPseudo,
+            score: 0,
+            is_host: true,
+          },
+        ]);
+
+      if (playerError) throw playerError;
+
+      // 3. Rediriger vers le salon
+      router.push(`/room/${roomCode}?playerId=${userId}`);
+    } catch (error) {
+      console.error("Erreur lors de la création :", error);
+      alert("Une erreur est survenue lors de la création du salon.");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const questionOptions = [5, 10, 15, 20, 30, 40, 50];
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-slate-950 via-blue-950 to-black text-white p-4">
-      <h1 className="text-4xl md:text-6xl font-black mb-8 text-green-400">
-        CRÉER UN SALON 
+      <h1 className="text-4xl md:text-6xl font-black mb-8 text-green-400 text-center">
+        CRÉER UN SALON
       </h1>
 
-      <div className="w-full max-w-md space-y-6">
-        {/* Pseudo */}
+      <form onSubmit={createRoom} className="w-full max-w-2xl space-y-8">
+        {/* Nom du salon */}
         <div>
-          <label className="block text-green-300 mb-2 font-bold text-lg">
-            Ton pseudo :
+          <label className="block text-green-300 mb-3 font-bold text-lg text-center">
+            Nom du salon (optionnel) :
           </label>
           <input
             type="text"
-            value={pseudo}
-            onChange={(e) => setPseudo(e.target.value)}
-            placeholder="Entre ton pseudo..."
-            className="w-full bg-black border-2 border-green-400 text-green-400 placeholder-green-700 rounded-xl py-3 px-4 text-xl font-bold focus:outline-none focus:shadow-[0_0_15px_rgba(74,222,128,0.5)]"
+            value={roomName}
+            onChange={(e) => setRoomName(e.target.value)}
+            placeholder="Ex: Soirée Quiz Potes"
+            className="w-full bg-black border-2 border-green-400 text-green-400 placeholder-green-700 rounded-xl py-3 px-4 text-xl font-bold focus:outline-none focus:shadow-[0_0_15px_rgba(74,222,128,0.5)] text-center"
           />
         </div>
 
-        {/* Choix du mode */}
+        {/* Sélecteur de nombre de questions */}
         <div>
-          <label className="block text-green-300 mb-3 font-bold text-lg">
-            Mode de jeu :
+          <label className="block text-green-300 mb-4 font-bold text-lg text-center">
+            Nombre de questions :
           </label>
-          <div className="grid grid-cols-3 gap-2">
-            {modes.map((m) => (
+          <div className="flex justify-center gap-3 flex-wrap">
+            {questionOptions.map((num) => (
               <button
-                key={m.value}
-                onClick={() => setMode(m.value)}
-                className={`border-2 rounded-xl py-3 px-2 font-black transition-all ${
-                  mode === m.value
-                    ? `${m.color} bg-black scale-105 shadow-[0_0_15px_rgba(74,222,128,0.3)]`
-                    : "border-gray-600 text-gray-500 hover:border-gray-400"
+                key={num}
+                type="button"
+                onClick={() => setTotalQuestions(num)}
+                className={`w-20 h-20 rounded-xl font-black text-2xl border-2 transition-all duration-200 ${
+                  totalQuestions === num
+                    ? "bg-green-400 text-black border-green-400 scale-110 shadow-[0_0_20px_rgba(74,222,128,0.7)]"
+                    : "bg-black text-green-400 border-green-700 hover:border-green-400 hover:scale-105"
                 }`}
               >
-                <div className="text-sm md:text-base">{m.label}</div>
-                <div className="text-xs opacity-70">{m.desc}</div>
+                {num}
               </button>
             ))}
           </div>
+          <p className="text-center text-green-300 mt-4 font-bold text-lg">
+            {totalQuestions} question{totalQuestions > 1 ? "s" : ""} sélectionnée{totalQuestions > 1 ? "s" : ""}
+          </p>
         </div>
 
-        {/* Bouton créer */}
+        {/* Bouton Créer */}
         <button
-          onClick={handleCreate}
+          type="submit"
           disabled={loading}
-          className="w-full bg-green-400 text-black hover:bg-green-300 active:scale-95 transition-all font-black py-4 rounded-xl text-xl shadow-[0_0_20px_rgba(74,222,128,0.5)] border-b-4 border-green-600 disabled:opacity-50"
+          className="w-full bg-green-400 text-black hover:bg-green-300 active:scale-95 transition-all font-black py-5 rounded-xl text-2xl shadow-[0_0_20px_rgba(74,222,128,0.5)] border-b-4 border-green-600 disabled:opacity-50"
         >
           {loading ? "CRÉATION..." : "CRÉER LE SALON 🚀"}
         </button>
 
         <a
           href="/"
-          className="block text-center text-green-300 hover:text-green-100 font-bold"
+          className="block text-center text-green-300 hover:text-green-100 font-bold text-lg"
         >
-          ← Retour à l'accueil
+          ← Retour au menu
         </a>
-      </div>
+      </form>
     </div>
   );
 }
