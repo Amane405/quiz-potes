@@ -77,6 +77,11 @@ export default function AuthPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-slate-950 via-blue-950 to-black text-white p-4">
+      {/* Phrase au-dessus du titre */}
+      <p className="text-xl md:text-2xl text-green-300 mb-4 text-center font-bold">
+        {isLogin ? "Connecte-toi et joue entre amis 🎮" : "Rejoins la communauté Master Blast ! 🚀"}
+      </p>
+
       <h1 className="text-4xl md:text-6xl font-black mb-8 text-green-400">
         {isLogin ? "CONNEXION" : "INSCRIPTION"}
       </h1>
@@ -91,7 +96,7 @@ export default function AuthPage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="ton@email.com"
             required
-            className="w-full bg-black border-2 border-green-400 text-green-400 placeholder-green-700 rounded-xl py-3 px-4 text-xl font-bold focus:outline-none"
+            className="w-full bg-black border-2 border-green-400 text-green-400 placeholder-green-700 rounded-xl py-3 px-4 text-xl font-bold focus:outline-none focus:shadow-[0_0_15px_rgba(74,222,128,0.5)]"
           />
         </div>
 
@@ -105,7 +110,7 @@ export default function AuthPage() {
               onChange={(e) => setPseudo(e.target.value)}
               placeholder="Ton pseudo dans le jeu..."
               required
-              className="w-full bg-black border-2 border-green-400 text-green-400 placeholder-green-700 rounded-xl py-3 px-4 text-xl font-bold focus:outline-none"
+              className="w-full bg-black border-2 border-green-400 text-green-400 placeholder-green-700 rounded-xl py-3 px-4 text-xl font-bold focus:outline-none focus:shadow-[0_0_15px_rgba(74,222,128,0.5)]"
             />
           </div>
         )}
@@ -120,7 +125,7 @@ export default function AuthPage() {
             placeholder="Ton mot de passe..."
             required
             minLength={4}
-            className="w-full bg-black border-2 border-green-400 text-green-400 placeholder-green-700 rounded-xl py-3 px-4 text-xl font-bold focus:outline-none"
+            className="w-full bg-black border-2 border-green-400 text-green-400 placeholder-green-700 rounded-xl py-3 px-4 text-xl font-bold focus:outline-none focus:shadow-[0_0_15px_rgba(74,222,128,0.5)]"
           />
         </div>
 
@@ -129,16 +134,16 @@ export default function AuthPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-green-400 text-black hover:bg-green-300 font-black py-4 rounded-xl text-xl border-b-4 border-green-600 disabled:opacity-50"
+          className="w-full bg-green-400 text-black hover:bg-green-300 font-black py-4 rounded-xl text-xl border-b-4 border-green-600 disabled:opacity-50 transition-all active:scale-95"
         >
-          {loading ? "CHARGEMENT..." : isLogin ? "SE CONNECTER " : "S'INSCRIRE "}
+          {loading ? "CHARGEMENT..." : isLogin ? "SE CONNECTER " : "S'INSCRIRE 🎮"}
         </button>
 
         <div className="text-center">
           <button
             type="button"
             onClick={() => { setIsLogin(!isLogin); setError(""); }}
-            className="text-green-300 hover:text-green-100 font-bold"
+            className="text-green-300 hover:text-green-100 font-bold text-lg"
           >
             {isLogin ? "Pas de compte ? Inscris-toi !" : "Déjà un compte ? Connecte-toi !"}
           </button>
@@ -146,7 +151,7 @@ export default function AuthPage() {
 
         <a
           href="/"
-          className="block text-center text-green-300 hover:text-green-100 font-bold"
+          className="block text-center text-green-300 hover:text-green-100 font-bold text-lg"
         >
           ← Retour à l'accueil
         </a>
