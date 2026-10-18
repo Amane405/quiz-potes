@@ -114,7 +114,7 @@ export default function ProfilePage() {
             className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-green-400 object-cover"
           />
           <h2 className="text-3xl font-black text-green-400 mb-2">{pseudo}</h2>
-          <p className="text-green-300">{email}</p>
+          <p className="text-white/50 italic">{email}</p>
         </div>
 
         {/* Sélecteur d'avatars */}
@@ -164,13 +164,13 @@ export default function ProfilePage() {
           </div>
 
           <div className="bg-black border-2 border-yellow-400 rounded-xl p-4 text-center">
-            <div className="text-4xl mb-2">🏆</div>
+            <div className="text-4xl mb-2"></div>
             <div className="text-3xl font-black text-yellow-400">{stats.games_won}</div>
             <div className="text-green-300 text-sm">Victoires</div>
           </div>
 
           <div className="bg-black border-2 border-red-400 rounded-xl p-4 text-center">
-            <div className="text-4xl mb-2">💀</div>
+            <div className="text-4xl mb-2"></div>
             <div className="text-3xl font-black text-red-400">{stats.games_lost}</div>
             <div className="text-green-300 text-sm">Défaites</div>
           </div>
@@ -203,7 +203,7 @@ export default function ProfilePage() {
             href="/"
             className="bg-green-400 text-black hover:bg-green-300 font-black py-3 px-8 rounded-xl text-lg border-b-4 border-green-600"
           >
-            JOUER 🎮
+            MENU PRINCIPAL 🏠
           </a>
           <button
             onClick={logout}
