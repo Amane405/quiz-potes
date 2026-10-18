@@ -23,16 +23,16 @@ export default function AuthPage() {
       const hashedPassword = await hashPassword(password);
 
       if (isLogin) {
-        // --- CONNEXION ---
+        // CONNEXION
         const { data: user, error } = await supabase
-          .from("profiles") // ⚠️ Si ta table s'appelle "users", remplace "profiles" par "users" ici
+          .from("profiles")
           .select("*")
           .eq("email", email.toLowerCase().trim())
           .eq("password_hash", hashedPassword)
           .single();
 
         if (error || !user) {
-          setError("Email ou mot de passe incorrect.");
+          setError("Email ou mot de passe incorrect");
         } else {
           localStorage.setItem("userId", user.id);
           localStorage.setItem("userPseudo", user.pseudo);
@@ -41,31 +41,50 @@ export default function AuthPage() {
           router.push("/profile");
         }
       } else {
-        // --- INSCRIPTION ---
+        // INSCRIPTION - Vérification d'abord
+        const emailLower = email.toLowerCase().trim();
+        const pseudoTrim = pseudo.trim();
+
+        // 1. Vérifier si l'email existe déjà
+        const { data: existingEmail } = await supabase
+          .from("profiles")
+          .select("email")
+          .eq("email", emailLower)
+          .single();
+
+        if (existingEmail) {
+          setError("Cet email est déjà utilisé !");
+          setLoading(false);
+          return;
+        }
+
+        // 2. Vérifier si le pseudo existe déjà
+        const { data: existingPseudo } = await supabase
+          .from("profiles")
+          .select("pseudo")
+          .eq("pseudo", pseudoTrim)
+          .single();
+
+        if (existingPseudo) {
+          setError("Ce pseudo est déjà pris !");
+          setLoading(false);
+          return;
+        }
+
+        // 3. Insérer le nouveau profil
         const { data: user, error } = await supabase
-          .from("profiles") // ⚠️ Idem, "profiles" ou "users" selon le nom de ta table
+          .from("profiles")
           .insert([{ 
-            email: email.toLowerCase().trim(), 
-            pseudo: pseudo.trim(), 
+            email: emailLower, 
+            pseudo: pseudoTrim, 
             password_hash: hashedPassword 
           }])
           .select()
           .single();
 
         if (error) {
-          console.error("🔴 ERREUR SUPABASE DÉTAILLÉE :", error); // Regarde la console du navigateur (F12)
-          
-          if (error.code === "23505" || error.message?.includes("duplicate key")) {
-            if (error.message?.toLowerCase().includes("email") || error.message?.includes("email_key")) {
-              setError("Cet email est déjà utilisé !");
-            } else if (error.message?.toLowerCase().includes("pseudo") || error.message?.includes("pseudo_key")) {
-              setError("Ce pseudo est déjà pris !");
-            } else {
-              setError("Cet email ou ce pseudo est déjà utilisé !");
-            }
-          } else {
-            setError(`Erreur: ${error.message || "Problème de connexion à la base de données"}`);
-          }
+          console.error("Erreur Supabase:", error);
+          setError(`Erreur: ${error.message}`);
         } else {
           localStorage.setItem("userId", user.id);
           localStorage.setItem("userPseudo", user.pseudo);
@@ -75,8 +94,8 @@ export default function AuthPage() {
         }
       }
     } catch (err: any) {
-      console.error("🔴 ERREUR INATTENDUE :", err);
-      setError(`Une erreur est survenue : ${err.message || "Vérifie ta connexion"}`);
+      console.error("Erreur:", err);
+      setError(`Erreur: ${err.message}`);
     }
     
     setLoading(false);
