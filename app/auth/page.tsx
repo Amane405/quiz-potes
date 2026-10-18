@@ -59,7 +59,7 @@ export default function AuthPage() {
               setError("Ce pseudo est déjà pris !");
             }
           } else {
-            setError("Erreur lors de l'inscription");
+            setError(`Erreur: ${error.message}`);
           }
         } else {
           localStorage.setItem("userId", user.id);
