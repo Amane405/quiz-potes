@@ -44,7 +44,7 @@ export default function ProfilePage() {
 
     const loadData = async () => {
       const { data: userData } = await supabase
-        .from("users")
+        .from("profiles")
         .select("avatar_index")
         .eq("id", storedUserId)
         .single();
@@ -72,7 +72,7 @@ export default function ProfilePage() {
     localStorage.setItem("userAvatar", String(avatarId));
 
     await supabase
-      .from("users")
+      .from("profiles")
       .update({ avatar_index: avatarId })
       .eq("id", userId);
 

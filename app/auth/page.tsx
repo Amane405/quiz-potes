@@ -25,7 +25,7 @@ export default function AuthPage() {
       if (isLogin) {
         // --- CONNEXION (email + mot de passe) ---
         const { data: user, error } = await supabase
-          .from("users")
+          .from("profiles")
           .select("*")
           .eq("email", email)
           .eq("password_hash", hashedPassword)
@@ -42,7 +42,7 @@ export default function AuthPage() {
       } else {
         // --- INSCRIPTION (email + pseudo + mot de passe) ---
         const { data: user, error } = await supabase
-          .from("users")
+          .from("profiles")
           .insert([{ 
             email: email.toLowerCase().trim(), 
             pseudo, 
