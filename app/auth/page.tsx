@@ -23,53 +23,60 @@ export default function AuthPage() {
       const hashedPassword = await hashPassword(password);
 
       if (isLogin) {
-        // --- CONNEXION (email + mot de passe) ---
+        // --- CONNEXION ---
         const { data: user, error } = await supabase
-          .from("profiles")
+          .from("profiles") // ⚠️ Si ta table s'appelle "users", remplace "profiles" par "users" ici
           .select("*")
-          .eq("email", email)
+          .eq("email", email.toLowerCase().trim())
           .eq("password_hash", hashedPassword)
           .single();
 
         if (error || !user) {
-          setError("Email ou mot de passe incorrect");
+          setError("Email ou mot de passe incorrect.");
         } else {
           localStorage.setItem("userId", user.id);
           localStorage.setItem("userPseudo", user.pseudo);
           localStorage.setItem("userEmail", user.email);
+          localStorage.setItem("userAvatar", String(user.avatar_index || 0));
           router.push("/profile");
         }
       } else {
-        // --- INSCRIPTION (email + pseudo + mot de passe) ---
+        // --- INSCRIPTION ---
         const { data: user, error } = await supabase
-          .from("profiles")
+          .from("profiles") // ⚠️ Idem, "profiles" ou "users" selon le nom de ta table
           .insert([{ 
             email: email.toLowerCase().trim(), 
-            pseudo, 
+            pseudo: pseudo.trim(), 
             password_hash: hashedPassword 
           }])
           .select()
           .single();
 
         if (error) {
-          if (error.code === "23505") {
-            if (error.message.includes("email")) {
+          console.error("🔴 ERREUR SUPABASE DÉTAILLÉE :", error); // Regarde la console du navigateur (F12)
+          
+          if (error.code === "23505" || error.message?.includes("duplicate key")) {
+            if (error.message?.toLowerCase().includes("email") || error.message?.includes("email_key")) {
               setError("Cet email est déjà utilisé !");
-            } else {
+            } else if (error.message?.toLowerCase().includes("pseudo") || error.message?.includes("pseudo_key")) {
               setError("Ce pseudo est déjà pris !");
+            } else {
+              setError("Cet email ou ce pseudo est déjà utilisé !");
             }
           } else {
-            setError(`Erreur: ${error.message}`);
+            setError(`Erreur: ${error.message || "Problème de connexion à la base de données"}`);
           }
         } else {
           localStorage.setItem("userId", user.id);
           localStorage.setItem("userPseudo", user.pseudo);
           localStorage.setItem("userEmail", user.email);
+          localStorage.setItem("userAvatar", String(user.avatar_index || 0));
           router.push("/profile");
         }
       }
-    } catch (err) {
-      setError("Une erreur est survenue");
+    } catch (err: any) {
+      console.error("🔴 ERREUR INATTENDUE :", err);
+      setError(`Une erreur est survenue : ${err.message || "Vérifie ta connexion"}`);
     }
     
     setLoading(false);
@@ -77,7 +84,6 @@ export default function AuthPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-slate-950 via-blue-950 to-black text-white p-4">
-      {/* Phrase au-dessus du titre */}
       <p className="text-xl md:text-2xl text-green-300 mb-4 text-center font-bold">
         {isLogin ? "Connecte-toi et joue entre amis 🎮" : "Rejoins la communauté Master Blast ! 🚀"}
       </p>
@@ -87,7 +93,6 @@ export default function AuthPage() {
       </h1>
 
       <form onSubmit={handleSubmit} className="w-full max-w-md space-y-6">
-        {/* Email (toujours affiché) */}
         <div>
           <label className="block text-green-300 mb-2 font-bold text-lg">Email :</label>
           <input
@@ -100,7 +105,6 @@ export default function AuthPage() {
           />
         </div>
 
-        {/* Pseudo (uniquement à l'inscription) */}
         {!isLogin && (
           <div>
             <label className="block text-green-300 mb-2 font-bold text-lg">Pseudo :</label>
@@ -115,7 +119,6 @@ export default function AuthPage() {
           </div>
         )}
 
-        {/* Mot de passe (toujours affiché) */}
         <div>
           <label className="block text-green-300 mb-2 font-bold text-lg">Mot de passe :</label>
           <input
@@ -129,21 +132,25 @@ export default function AuthPage() {
           />
         </div>
 
-        {error && <p className="text-red-400 text-center font-bold">{error}</p>}
+        {error && (
+          <p className="text-red-400 text-center font-bold bg-red-900/20 p-3 rounded-lg border border-red-500/50">
+            {error}
+          </p>
+        )}
 
         <button
           type="submit"
           disabled={loading}
           className="w-full bg-green-400 text-black hover:bg-green-300 font-black py-4 rounded-xl text-xl border-b-4 border-green-600 disabled:opacity-50 transition-all active:scale-95"
         >
-          {loading ? "CHARGEMENT..." : isLogin ? "SE CONNECTER " : "S'INSCRIRE 🎮"}
+          {loading ? "CHARGEMENT..." : isLogin ? "SE CONNECTER 🚀" : "S'INSCRIRE 🎮"}
         </button>
 
         <div className="text-center">
           <button
             type="button"
             onClick={() => { setIsLogin(!isLogin); setError(""); }}
-            className="text-green-300 hover:text-green-100 font-bold text-lg"
+            className="text-green-300 hover:text-green-100 font-bold text-lg underline"
           >
             {isLogin ? "Pas de compte ? Inscris-toi !" : "Déjà un compte ? Connecte-toi !"}
           </button>
@@ -151,7 +158,7 @@ export default function AuthPage() {
 
         <a
           href="/"
-          className="block text-center text-green-300 hover:text-green-100 font-bold text-lg"
+          className="block text-center text-green-300 hover:text-green-100 font-bold text-lg mt-4"
         >
           ← Retour à l'accueil
         </a>
