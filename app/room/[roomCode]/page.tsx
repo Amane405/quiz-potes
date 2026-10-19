@@ -1,20 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/supabase";
 
-export default function RoomPage() {
+export default function RoomPage({ params }: { params: { roomCode: string } }) {
   const [players, setPlayers] = useState<any[]>([]);
   const [room, setRoom] = useState<any>(null);
   const [isHost, setIsHost] = useState(false);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const playerId = searchParams.get("playerId");
+
+  const roomCode = params.roomCode;
+  const playerId = typeof window !== "undefined" 
+    ? new URLSearchParams(window.location.search).get("playerId") 
+    : null;
 
   useEffect(() => {
-    const roomCode = window.location.pathname.split("/").pop();
     if (!roomCode || !playerId) return;
 
     const fetchData = async () => {
@@ -26,7 +28,13 @@ export default function RoomPage() {
 
       if (roomData) {
         setRoom(roomData);
-        if (roomData.host_id === playerId) {
+        console.log("🔍 Room data:", roomData);
+        console.log("🔍 host_id:", roomData.host_id);
+        console.log("🔍 playerId:", playerId);
+        console.log("🔍 Match:", roomData.host_id === playerId);
+        
+        // Détection du host
+        if (String(roomData.host_id) === String(playerId)) {
           setIsHost(true);
         }
       }
@@ -43,10 +51,9 @@ export default function RoomPage() {
     fetchData();
     const interval = setInterval(fetchData, 1000);
     return () => clearInterval(interval);
-  }, [playerId]);
+  }, [roomCode, playerId]);
 
   const startGame = async () => {
-    const roomCode = window.location.pathname.split("/").pop();
     if (!roomCode) return;
 
     await supabase
@@ -64,8 +71,6 @@ export default function RoomPage() {
       </div>
     );
   }
-
-  const roomCode = window.location.pathname.split("/").pop();
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-slate-950 via-blue-950 to-black text-white p-4">
@@ -105,8 +110,8 @@ export default function RoomPage() {
         </div>
       </div>
 
-      {/* BOUTON LANCER - Visible uniquement pour le host */}
-      {isHost && players.length >= 1 && (
+      {/* BOUTON LANCER - Toujours visible si au moins 1 joueur */}
+      {players.length >= 1 && (
         <button
           onClick={startGame}
           className="mt-8 bg-yellow-400 text-black hover:bg-yellow-300 font-black py-4 px-12 rounded-xl text-2xl border-b-4 border-yellow-600 transition-all active:scale-95 shadow-[0_0_20px_rgba(250,204,21,0.5)]"
@@ -115,9 +120,9 @@ export default function RoomPage() {
         </button>
       )}
 
-      {!isHost && (
+      {players.length === 0 && (
         <p className="mt-8 text-yellow-400 font-bold text-lg animate-pulse">
-          En attente que le host lance le jeu...
+          En attente de joueurs...
         </p>
       )}
     </div>
