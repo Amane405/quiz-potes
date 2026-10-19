@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/supabase";
 
@@ -8,68 +8,78 @@ export default function CreatePage() {
   const [roomName, setRoomName] = useState("");
   const [totalQuestions, setTotalQuestions] = useState(10);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
+
+  useEffect(() => {
+    const userId = localStorage.getItem("userId");
+    if (!userId) router.push("/auth");
+  }, [router]);
 
   const createRoom = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     setLoading(true);
 
     const userId = localStorage.getItem("userId");
     const userPseudo = localStorage.getItem("userPseudo") || "Joueur";
 
     if (!userId) {
-      alert("Tu dois être connecté pour créer un salon !");
-      router.push("/auth");
+      setError("Tu dois être connecté !");
       setLoading(false);
       return;
     }
 
-    // Générer un code de salon aléatoire de 6 caractères
     const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
     try {
-      // 1. Créer le salon
       const { data: room, error: roomError } = await supabase
         .from("rooms")
-        .insert([
-          {
-            id: roomCode,
-            name: roomName || "Salon de " + userPseudo,
-            host_id: userId,
-            total_questions: totalQuestions,
-            status: "waiting",
-            question_phase: "intro",
-            game_round: 0,
-          },
-        ])
+        .insert([{
+          id: roomCode,
+          name: roomName || "Salon de " + userPseudo,
+          host_id: userId,
+          total_questions: totalQuestions,
+          status: "waiting",
+          question_phase: "intro",
+          game_round: 0,
+          current_question_index: 0,
+        }])
         .select()
         .single();
 
-      if (roomError) throw roomError;
+      if (roomError) {
+        console.error("Erreur room:", roomError);
+        setError("Erreur salon : " + roomError.message);
+        setLoading(false);
+        return;
+      }
 
-      // 2. Ajouter le créateur comme premier joueur (Host)
       const { error: playerError } = await supabase
         .from("players")
-        .insert([
-          {
-            room_id: roomCode,
-            player_id: userId,
-            name: userPseudo,
-            score: 0,
-            is_host: true,
-          },
-        ]);
+        .insert([{
+          room_id: roomCode,
+          player_id: userId,
+          name: userPseudo,
+          score: 0,
+          is_host: true,
+        }]);
 
-      if (playerError) throw playerError;
+      if (playerError) {
+        console.error("Erreur player:", playerError);
+        await supabase.from("rooms").delete().eq("id", roomCode);
+        setError("Erreur joueur : " + playerError.message);
+        setLoading(false);
+        return;
+      }
 
-      // 3. Rediriger vers le salon
       router.push(`/room/${roomCode}?playerId=${userId}`);
-    } catch (error) {
-      console.error("Erreur lors de la création :", error);
-      alert("Une erreur est survenue lors de la création du salon.");
-    } finally {
-      setLoading(false);
+    } catch (err: any) {
+      console.error("Erreur:", err);
+      setError("Erreur : " + err.message);
     }
+
+    setLoading(false);
   };
 
   const questionOptions = [5, 10, 15, 20, 30, 40, 50];
@@ -81,7 +91,6 @@ export default function CreatePage() {
       </h1>
 
       <form onSubmit={createRoom} className="w-full max-w-2xl space-y-8">
-        {/* Nom du salon */}
         <div>
           <label className="block text-green-300 mb-3 font-bold text-lg text-center">
             Nom du salon (optionnel) :
@@ -95,7 +104,6 @@ export default function CreatePage() {
           />
         </div>
 
-        {/* Sélecteur de nombre de questions */}
         <div>
           <label className="block text-green-300 mb-4 font-bold text-lg text-center">
             Nombre de questions :
@@ -121,7 +129,12 @@ export default function CreatePage() {
           </p>
         </div>
 
-        {/* Bouton Créer */}
+        {error && (
+          <p className="text-red-400 text-center font-bold bg-red-900/20 p-3 rounded-lg border border-red-500/50">
+            {error}
+          </p>
+        )}
+
         <button
           type="submit"
           disabled={loading}

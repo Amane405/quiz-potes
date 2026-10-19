@@ -38,14 +38,13 @@ export default function AuthPage() {
           localStorage.setItem("userPseudo", user.pseudo);
           localStorage.setItem("userEmail", user.email);
           localStorage.setItem("userAvatar", String(user.avatar_index || 0));
-          router.push("/profile");
+          router.push("/");
         }
       } else {
-        // INSCRIPTION - Vérification d'abord
+        // INSCRIPTION
         const emailLower = email.toLowerCase().trim();
         const pseudoTrim = pseudo.trim();
 
-        // 1. Vérifier si l'email existe déjà
         const { data: existingEmail } = await supabase
           .from("profiles")
           .select("email")
@@ -58,7 +57,6 @@ export default function AuthPage() {
           return;
         }
 
-        // 2. Vérifier si le pseudo existe déjà
         const { data: existingPseudo } = await supabase
           .from("profiles")
           .select("pseudo")
@@ -71,7 +69,6 @@ export default function AuthPage() {
           return;
         }
 
-        // 3. Insérer le nouveau profil
         const { data: user, error } = await supabase
           .from("profiles")
           .insert([{ 
@@ -90,7 +87,7 @@ export default function AuthPage() {
           localStorage.setItem("userPseudo", user.pseudo);
           localStorage.setItem("userEmail", user.email);
           localStorage.setItem("userAvatar", String(user.avatar_index || 0));
-          router.push("/profile");
+          router.push("/");
         }
       }
     } catch (err: any) {
