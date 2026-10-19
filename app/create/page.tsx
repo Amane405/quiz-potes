@@ -73,7 +73,9 @@ export default function CreatePage() {
         return;
       }
 
-      router.push(`/room/${roomCode}?playerId=${userId}`);
+      // ✅ SEULE MODIFICATION ICI : window.location au lieu de router.push
+      window.location.href = `/room/${roomCode}?playerId=${userId}`;
+      
     } catch (err: any) {
       console.error("Erreur:", err);
       setError("Erreur : " + err.message);

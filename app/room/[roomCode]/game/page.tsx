@@ -59,9 +59,9 @@ const playSound = (type: "tick" | "tick-fast" | "correct" | "wrong" | "start" | 
   }
 };
 
-const GOOD_MESSAGES = ["🔥 LÉGENDE !", "🎯 MACHINE !", " CLASSE MONDIALE !", " ROI DU QUIZ !", "🚀 T'ES UNE BÊTE !", "💯 PERFECTION !", "🧙 SORCIER !", "🥇 NUMÉRO 1 !", "🌟 INCROYABLE !", "👹 MONSTRE SACRÉ !"];
+const GOOD_MESSAGES = ["🔥 LÉGENDE !", " MACHINE !", " CLASSE MONDIALE !", " ROI DU QUIZ !", " T'ES UNE BÊTE !", " PERFECTION !", "🧙 SORCIER !", "🥇 NUMÉRO 1 !", "🌟 INCROYABLE !", "👹 MONSTRE SACRÉ !"];
 const BAD_MESSAGES = ["😂 T'AS SÉRIEUSEMENT CRU ÇA ?", " CLOWN ATTESTÉ", "💀 RIP TON CERVEAU", "🍼 NIVEAU MATERNELLE", "🙃 T'AS RÉPONDU AU HASARD ?", "🐢 PLUS LENT QU'UN ESCARGOT", "🗑️ POUBELLE DE RÉPONSES", " VA RÉVISER À L'ÉCOLE", "🥴 T'ÉTAIS OÙ DANS TA TÊTE ?", "🚫 INTERDIT DE JOUER SANS CERVEAU"];
-const BOTTOM_MESSAGES = ["Il fait de son mieux... ", "Au moins il participe 😅", "Il joue en mode facile 🎮", "Prochaine fois, révise ! 📖", "Même ma grand-mère ferait mieux ", "C'est le début d'une grande carrière... vers le bas 📉"];
+const BOTTOM_MESSAGES = ["Il fait de son mieux... ", "Au moins il participe ", "Il joue en mode facile 🎮", "Prochaine fois, révise ! 📖", "Même ma grand-mère ferait mieux ", "C'est le début d'une grande carrière... vers le bas 📉"];
 
 const COLORS = [
   { bg: "bg-red-500", hover: "hover:bg-red-400", border: "border-red-700", label: "A" },
@@ -138,14 +138,12 @@ export default function GamePage({ params }: { params: { roomCode: string } }) {
 
       if (!roomData) return;
 
-      // 🔑 DÉTECTION DU RETOUR AU SALON PAR LE HOST
       if (roomData.status === "waiting" && phase === "end") {
         console.log("Le host est retourné au salon, redirection...");
         router.push(`/room/${params.roomCode}?playerId=${playerId}`);
         return;
       }
 
-      // Détecter une nouvelle partie (game_round a changé)
       const currentGameRound = roomData.game_round || 0;
       if (currentGameRound !== lastGameRound.current) {
         console.log("Nouvelle partie détectée ! Round:", currentGameRound);
@@ -167,7 +165,6 @@ export default function GamePage({ params }: { params: { roomCode: string } }) {
 
       const currentIdx = roomData.current_question_index || 0;
 
-      // Charger les questions depuis la DB
       if (!questionsLoaded.current && roomData.question_phase !== "intro" && roomData.question_phase !== "waiting") {
         const { data: gameQuestions } = await supabase
           .from("game_questions")
@@ -182,7 +179,6 @@ export default function GamePage({ params }: { params: { roomCode: string } }) {
         }
       }
 
-      // Détecter le démarrage du jeu
       if (questionsLoaded.current && !gameStarted.current && roomData.question_phase === "question") {
         gameStarted.current = true;
         lastQuestionIndex.current = currentIdx;
@@ -207,7 +203,6 @@ export default function GamePage({ params }: { params: { roomCode: string } }) {
         }
       }
 
-      // Détecter le changement de question
       if (gameStarted.current && roomData.question_phase === "question" && currentIdx !== lastQuestionIndex.current) {
         lastQuestionIndex.current = currentIdx;
         
@@ -224,7 +219,6 @@ export default function GamePage({ params }: { params: { roomCode: string } }) {
         }
       }
 
-      // Compter les réponses
       if (roomData.current_question_index !== undefined) {
         const { count } = await supabase
           .from("answers")
@@ -234,7 +228,6 @@ export default function GamePage({ params }: { params: { roomCode: string } }) {
         if (count !== null) setAnsweredCount(count);
       }
 
-      // Transitions de phase
       if (roomData.question_phase === "reveal" && phase !== "reveal" && phase !== "scores" && phase !== "podium" && phase !== "end") {
         const { data: myAnswer } = await supabase
           .from("answers")
@@ -246,7 +239,6 @@ export default function GamePage({ params }: { params: { roomCode: string } }) {
         setMyResult(myAnswer);
         playSound("reveal");
         
-        // Choisir le message UNE SEULE FOIS
         const isCorrect = myAnswer?.is_correct;
         const randomGood = GOOD_MESSAGES[Math.floor(Math.random() * GOOD_MESSAGES.length)];
         const randomBad = BAD_MESSAGES[Math.floor(Math.random() * BAD_MESSAGES.length)];
@@ -354,12 +346,10 @@ export default function GamePage({ params }: { params: { roomCode: string } }) {
     playSound("start");
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    // 🧹 NETTOYER l'ancienne partie
     await supabase.from("game_questions").delete().eq("room_id", params.roomCode);
     await supabase.from("answers").delete().eq("room_id", params.roomCode);
     await supabase.from("players").update({ score: 0 }).eq("room_id", params.roomCode);
 
-    // 🔄 Incrémenter le game_round
     const { data: roomData } = await supabase.from("rooms").select("game_round").eq("id", params.roomCode).single();
     const newGameRound = (roomData?.game_round || 0) + 1;
 
@@ -398,7 +388,10 @@ export default function GamePage({ params }: { params: { roomCode: string } }) {
     const isCorrect = answerIndex === Number(currentQ.correct_answer);
     const points = isCorrect ? Math.max(10, Math.floor((timeLeft / 15) * 100)) : 0;
 
-    await supabase.from("answers").upsert({
+    console.log("📝 Réponse soumise:", answerIndex, "Correct:", isCorrect, "Points:", points);
+
+    // 1. Enregistrer la réponse
+    const { error: answerError } = await supabase.from("answers").upsert({
       room_id: params.roomCode,
       question_index: qIndex,
       player_id: playerId,
@@ -408,14 +401,43 @@ export default function GamePage({ params }: { params: { roomCode: string } }) {
       time_left: timeLeft,
     });
 
-    const currentPlayer = players.find(p => p.id === playerId);
-    const newScore = (currentPlayer?.score || 0) + points;
-    
-    await supabase.from("players").update({
-      score: newScore,
-      last_answer_correct: isCorrect,
-      last_points: points,
-    }).eq("id", playerId);
+    if (answerError) {
+      console.error("❌ Erreur answer:", answerError);
+    }
+
+    // 2. ✅ LIRE le score actuel DIRECTEMENT depuis la DB (fiable à 100%)
+    const { data: currentPlayer, error: selectError } = await supabase
+      .from("players")
+      .select("score")
+      .eq("room_id", params.roomCode)
+      .eq("player_id", playerId)
+      .single();
+
+    if (selectError) {
+      console.error("❌ Erreur select player:", selectError);
+    }
+
+    const currentScore = currentPlayer?.score || 0;
+    const newScore = currentScore + points;
+
+    console.log("📊 Score actuel:", currentScore, "+", points, "=", newScore);
+
+    // 3. Mettre à jour le score dans la DB
+    const { error: updateError } = await supabase
+      .from("players")
+      .update({
+        score: newScore,
+        last_answer_correct: isCorrect,
+        last_points: points,
+      })
+      .eq("room_id", params.roomCode)
+      .eq("player_id", playerId);
+
+    if (updateError) {
+      console.error("❌ Erreur update score:", updateError);
+    } else {
+      console.log("✅ Score mis à jour avec succès:", newScore, "pts");
+    }
 
     setPhase("answered");
 
@@ -439,20 +461,16 @@ export default function GamePage({ params }: { params: { roomCode: string } }) {
   const goToNextQuestion = async () => {
     const nextIdx = qIndex + 1;
 
-    //  FIN DE PARTIE - Mise à jour des stats
     if (nextIdx >= questions.length) {
       await supabase.from("rooms").update({ question_phase: "end" }).eq("id", params.roomCode);
       
-      // 📊 Mettre à jour les stats de l'utilisateur connecté
       const userId = localStorage.getItem("userId");
       if (userId) {
-        // Trouver le score final du joueur actuel
-        const currentPlayer = players.find(p => p.id === playerId);
+        const currentPlayer = players.find(p => p.player_id === playerId);
         const finalScore = currentPlayer?.score || 0;
         
-        // Le gagnant est celui qui a le plus de points (premier du classement trié)
         const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
-        const isWinner = sortedPlayers.length > 0 && sortedPlayers[0]?.id === playerId;
+        const isWinner = sortedPlayers.length > 0 && sortedPlayers[0]?.player_id === playerId;
         
         const { data: currentStats } = await supabase
           .from("user_stats")
@@ -479,7 +497,6 @@ export default function GamePage({ params }: { params: { roomCode: string } }) {
       return;
     }
 
-    // Si on vient du podium, on passe directement à la question suivante
     if (phase === "podium") {
       await supabase.from("rooms").update({
         current_question_index: nextIdx,
@@ -498,7 +515,6 @@ export default function GamePage({ params }: { params: { roomCode: string } }) {
       return;
     }
 
-    // Sinon, vérifier si on doit afficher un podium (toutes les 5 questions)
     const questionNumber = nextIdx;
     if (questionNumber % 5 === 0 && !podiumShown.current.has(nextIdx - 1)) {
       podiumShown.current.add(nextIdx - 1);
@@ -542,17 +558,17 @@ export default function GamePage({ params }: { params: { roomCode: string } }) {
   if (phase === "intro") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-slate-950 via-blue-950 to-black text-white p-4">
-        <div className="text-6xl mb-6 animate-bounce"></div>
+        <div className="text-6xl mb-6 animate-bounce">💥</div>
         <h1 className="text-4xl md:text-6xl font-black mb-4 text-green-400 text-center">MASTER BLAST!</h1>
         <p className="text-xl text-green-300 mb-4 text-center">{totalQ} questions • 15 secondes chacune • Max 100 pts</p>
         <p className="text-lg text-green-300 mb-8 text-center">{totalPlayers} joueur{totalPlayers > 1 ? "s" : ""} prêt{totalPlayers > 1 ? "s" : ""}</p>
 
-        {(room?.host_id === playerId || localStorage.getItem("userId") === room?.host_id) ? (
+        {isHost ? (
           <button onClick={startGame} className="bg-green-400 text-black hover:bg-green-300 font-black py-4 px-12 rounded-xl text-2xl shadow-[0_0_20px_rgba(74,222,128,0.5)] border-b-4 border-green-600 animate-pulse">
             COMMENCER ! 🚀
           </button>
         ) : (
-          <div className="text-yellow-400 text-xl font-bold animate-pulse"> En attente que le host commence...</div>
+          <div className="text-yellow-400 text-xl font-bold animate-pulse">En attente que le host commence...</div>
         )}
       </div>
     );
@@ -574,7 +590,7 @@ export default function GamePage({ params }: { params: { roomCode: string } }) {
           <div className={`${timerColor} h-4 rounded-full transition-all`} style={{ width: `${timerPercent}%` }}></div>
         </div>
         <div className={`text-center text-5xl font-black mb-6 ${timeLeft <= 5 ? "text-red-500 animate-pulse" : "text-green-400"}`}>
-          ⏱️ {timeLeft}s
+          ️ {timeLeft}s
         </div>
 
         <div className="bg-black border-2 border-green-400 rounded-2xl p-6 mb-6 text-center">
@@ -689,11 +705,11 @@ export default function GamePage({ params }: { params: { roomCode: string } }) {
         <div className="w-full max-w-md mb-8">
           <div className="space-y-3">
             {players.slice(0, 5).map((p, idx) => (
-              <div key={p.id} className={`bg-black border-2 rounded-xl py-3 px-5 flex justify-between items-center ${p.id === playerId ? "border-yellow-400 scale-105" : "border-green-400"}`}>
+              <div key={p.id} className={`bg-black border-2 rounded-xl py-3 px-5 flex justify-between items-center ${p.player_id === playerId ? "border-yellow-400 scale-105" : "border-green-400"}`}>
                 <div className="flex items-center gap-3">
                   <span className="text-2xl font-black text-gray-400">{idx + 1}</span>
                   <span className="font-bold text-white text-xl">{p.name}</span>
-                  {p.id === playerId && <span className="text-yellow-400">👈</span>}
+                  {p.player_id === playerId && <span className="text-yellow-400">👈</span>}
                 </div>
                 <span className="font-black text-yellow-400 text-xl">{p.score} pts</span>
               </div>
@@ -723,7 +739,7 @@ export default function GamePage({ params }: { params: { roomCode: string } }) {
           <h2 className="text-2xl font-black text-green-400 mb-4 text-center">🥇 LES MEILLEURS</h2>
           <div className="space-y-3">
             {top3.map((p, idx) => {
-              const medals = ["🥇", "🥈", ""];
+              const medals = ["🥇", "", "🥉"];
               const colors = ["text-yellow-400", "text-gray-300", "text-orange-400"];
               return (
                 <div key={p.id} className={`bg-black border-2 border-green-400 rounded-xl py-4 px-5 flex items-center justify-between ${idx === 0 ? "scale-105 shadow-[0_0_20px_rgba(250,204,21,0.3)]" : ""}`}>
@@ -743,7 +759,7 @@ export default function GamePage({ params }: { params: { roomCode: string } }) {
             <h2 className="text-2xl font-black text-red-400 mb-4 text-center">🗑️ LES MOINS BONS</h2>
             <div className="space-y-3">
               {bottom3.map((p, idx) => {
-                const emojis = ["💀", "🤡", "😢"];
+                const emojis = ["💀", "🤡", ""];
                 const msg = BOTTOM_MESSAGES[idx % BOTTOM_MESSAGES.length];
                 return (
                   <div key={p.id} className="bg-black border-2 border-red-400 rounded-xl py-3 px-5">
@@ -787,7 +803,7 @@ export default function GamePage({ params }: { params: { roomCode: string } }) {
           <h2 className="text-2xl font-black text-green-400 mb-4 text-center"> PODIUM FINAL</h2>
           <div className="space-y-3">
             {sortedPlayers.slice(0, 3).map((p, idx) => {
-              const medals = ["", "🥈", "🥉"];
+              const medals = ["🥇", "🥈", ""];
               return (
                 <div key={p.id} className={`bg-black border-2 border-green-400 rounded-xl py-4 px-5 flex items-center justify-between ${idx === 0 ? "scale-105 shadow-[0_0_20px_rgba(250,204,21,0.5)]" : ""}`}>
                   <div className="flex items-center gap-3">
@@ -833,7 +849,7 @@ export default function GamePage({ params }: { params: { roomCode: string } }) {
           <div className="space-y-4">
             {waitingForHost ? (
               <div className="text-center">
-                <p className="text-yellow-400 text-lg font-bold animate-pulse mb-4">⏳ En attente que le host retourne au salon...</p>
+                <p className="text-yellow-400 text-lg font-bold animate-pulse mb-4"> En attente que le host retourne au salon...</p>
                 <button onClick={quitGame} className="bg-red-500 text-white hover:bg-red-400 font-black py-3 px-8 rounded-xl text-lg border-b-4 border-red-700">
                   QUITTER LE SALON 🚪
                 </button>
@@ -846,7 +862,7 @@ export default function GamePage({ params }: { params: { roomCode: string } }) {
                     onClick={() => setWaitingForHost(true)} 
                     className="bg-blue-500 text-white hover:bg-blue-400 font-black py-3 px-6 rounded-xl text-lg border-b-4 border-blue-700"
                   >
-                    ATTENDRE ⏳
+                    ATTENDRE 
                   </button>
                   <button 
                     onClick={quitGame} 
