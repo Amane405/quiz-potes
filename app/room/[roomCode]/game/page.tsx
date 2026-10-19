@@ -547,7 +547,7 @@ export default function GamePage({ params }: { params: { roomCode: string } }) {
         <p className="text-xl text-green-300 mb-4 text-center">{totalQ} questions • 15 secondes chacune • Max 100 pts</p>
         <p className="text-lg text-green-300 mb-8 text-center">{totalPlayers} joueur{totalPlayers > 1 ? "s" : ""} prêt{totalPlayers > 1 ? "s" : ""}</p>
 
-        {isHost ? (
+        {(room?.host_id === playerId || localStorage.getItem("userId") === room?.host_id) ? (
           <button onClick={startGame} className="bg-green-400 text-black hover:bg-green-300 font-black py-4 px-12 rounded-xl text-2xl shadow-[0_0_20px_rgba(74,222,128,0.5)] border-b-4 border-green-600 animate-pulse">
             COMMENCER ! 🚀
           </button>

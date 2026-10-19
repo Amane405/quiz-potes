@@ -7,7 +7,6 @@ import { supabase } from "@/supabase";
 export default function RoomPage({ params }: { params: { roomCode: string } }) {
   const [players, setPlayers] = useState<any[]>([]);
   const [room, setRoom] = useState<any>(null);
-  const [isHost, setIsHost] = useState(false);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -28,14 +27,10 @@ export default function RoomPage({ params }: { params: { roomCode: string } }) {
 
       if (roomData) {
         setRoom(roomData);
-        console.log("🔍 Room data:", roomData);
-        console.log("🔍 host_id:", roomData.host_id);
-        console.log("🔍 playerId:", playerId);
-        console.log("🔍 Match:", roomData.host_id === playerId);
-        
-        // Détection du host
-        if (String(roomData.host_id) === String(playerId)) {
-          setIsHost(true);
+        // Si le jeu a commencé, rediriger vers game
+        if (roomData.status === "playing") {
+          router.push(`/room/${roomCode}/game?playerId=${playerId}`);
+          return;
         }
       }
 
@@ -51,7 +46,7 @@ export default function RoomPage({ params }: { params: { roomCode: string } }) {
     fetchData();
     const interval = setInterval(fetchData, 1000);
     return () => clearInterval(interval);
-  }, [roomCode, playerId]);
+  }, [roomCode, playerId, router]);
 
   const startGame = async () => {
     if (!roomCode) return;
@@ -72,59 +67,8 @@ export default function RoomPage({ params }: { params: { roomCode: string } }) {
     );
   }
 
+  const isHost = room?.host_id === playerId;
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-slate-950 via-blue-950 to-black text-white p-4">
-      <h1 className="text-4xl md:text-6xl font-black mb-4 text-green-400">
-        MASTER BLAST! 💥
-      </h1>
-
-      <h2 className="text-xl md:text-2xl text-yellow-400 mb-8 font-bold">
-        Mode ⚡ RAPIDE ({room?.total_questions || 10} questions)
-      </h2>
-
-      <div className="mb-8 text-center">
-        <p className="text-green-300 mb-2 font-bold">Code du salon :</p>
-        <div className="bg-black border-4 border-green-400 rounded-2xl py-6 px-12 inline-block">
-          <p className="text-5xl md:text-7xl font-black text-green-400 tracking-widest">
-            {roomCode}
-          </p>
-        </div>
-      </div>
-
-      <div className="w-full max-w-md">
-        <h3 className="text-2xl font-black text-green-400 mb-4 text-center">
-          Joueurs connectés ({players.length})
-        </h3>
-        <div className="space-y-3">
-          {players.map((player) => (
-            <div
-              key={player.id}
-              className="bg-black border-2 border-green-400 rounded-xl py-3 px-6 flex justify-between items-center"
-            >
-              <span className="text-xl font-bold text-green-400">{player.name}</span>
-              {player.is_host && (
-                <span className="text-yellow-400 font-black text-sm">HOST</span>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* BOUTON LANCER - Toujours visible si au moins 1 joueur */}
-      {players.length >= 1 && (
-        <button
-          onClick={startGame}
-          className="mt-8 bg-yellow-400 text-black hover:bg-yellow-300 font-black py-4 px-12 rounded-xl text-2xl border-b-4 border-yellow-600 transition-all active:scale-95 shadow-[0_0_20px_rgba(250,204,21,0.5)]"
-        >
-          LANCER LE JEU 🚀
-        </button>
-      )}
-
-      {players.length === 0 && (
-        <p className="mt-8 text-yellow-400 font-bold text-lg animate-pulse">
-          En attente de joueurs...
-        </p>
-      )}
-    </div>
-  );
-}
+      <h1 className="text-4xl md:text-6xl font
