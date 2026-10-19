@@ -120,7 +120,7 @@ export default function GamePage({ params }: { params: { roomCode: string } }) {
         if (playersData && playersData.length > 0) {
           setPlayers(playersData);
           setTotalPlayers(playersData.length);
-          setIsHost(playersData[0].id === playerId);
+          setIsHost(roomData.host_id === playerId);
         }
       }
     };
